@@ -7,6 +7,7 @@ use rand_chacha::ChaCha12Rng;
 
 use crate::datagrid::{Selection, Room};
 
+pub mod pathcarver;
 
 
 
@@ -23,7 +24,7 @@ impl AlgorithmHelper {
         let mut uni = Box::new( HashSet::<(i64, i64, i64)>::new() );
         let mut random = ChaCha12Rng::seed_from_u64( seed as u64 );
 
-        let safety = count * 2;
+        let mut safety = count * 2;
 
         while safety > 0 && rms.len() < count as usize {
             let sx = random.random_range( sized.min.0..=sized.max.0 );
@@ -34,7 +35,7 @@ impl AlgorithmHelper {
             let py = random.random_range( within.min.1..(within.max.1 - sy) );
             let pz = random.random_range( within.min.2..(within.max.2 - sz) );
 
-            let center = ( (px + sx / 2) as i64, (py + sy / 2) as i64,  (pz + sz / 2) as i64 );
+            let center = ( (px + sx / 2) as i64, py as i64,  (pz + sz / 2) as i64 );
             let mut members = Box::new( HashSet::<(i64, i64, i64)>::new() );
 
             for x in 0..sx {
@@ -47,11 +48,13 @@ impl AlgorithmHelper {
 
             if allow_overlap || uni.is_disjoint(&members) {
                 uni = Box::new( &*uni | &*members );
-                rms.push( Room{ members, center: Some(center) } );
+                rms.push( Room{ members, center } );
             }
+
+            safety -= 1;
         }
 
         return Ok( (rms, uni) );
     }
-
 }
+

@@ -142,7 +142,7 @@ impl MapGenNode {
         let needsinput = comm.bind().needs_input();
 
         if needsinput == NeedsInput::No {
-            return comm.bind().run_none( seed );
+            return comm.bind().run_none( seed, self.base().get_name().to_string() );
         }
 
         if needsinput == NeedsInput::One {
@@ -163,7 +163,7 @@ impl MapGenNode {
             if gen_result.is_err() {
                 return gen_result;
             } else {
-                return comm.bind().run_one( seed, gen_result.unwrap() );
+                return comm.bind().run_one( seed, gen_result.unwrap(), self.base().get_name().to_string() );
             }
         }
 

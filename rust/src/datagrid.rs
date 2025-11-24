@@ -12,12 +12,14 @@ use crate::resource::{Neighborhood, EdgeMode};
 
 
 pub type Selection = Box<HashSet<(i64, i64, i64)>>;
+pub type PosList = Vec<(i64, i64, i64)>;
 
 
 pub enum GridElement {
     Int( Array3<i64> ),
     Float( Array3<f64> ),
     Sel( Selection ),
+    List( PosList ),
     Rooms( Vec<Room> ),
 }
 
@@ -32,7 +34,7 @@ pub enum ElemType {
 
 pub struct Room {
     pub members: Selection,
-    pub center: Option<(i64, i64, i64)>,
+    pub center: (i64, i64, i64),
 }
 
 pub struct DataGrid {
@@ -129,6 +131,7 @@ impl DataGrid {
             GridElement::Float(_) => { new_ge = GridElement::Float( Array3::<f64>::zeros(self.size) ); },
             GridElement::Sel(_) => { is_bool = true; new_ge = GridElement::Sel( Box::new( HashSet::<(i64, i64, i64)>::new() ) ); },
             GridElement::Rooms(_) => { return Err( "SampleNeighborhood called on a room list field (incompatible).".to_string() ) },
+            GridElement::List(_) => { return Err( "SampleNeighborhood called on a position list field (incompatible, try ListToSel).".to_string() ) },
         }
 
         let mut expression = Expression::new_gd();
@@ -269,6 +272,8 @@ impl DataGrid {
     }
 }
 
+
+
 #[derive(GodotClass)]
 #[class(tool, init, base=Object)]
 struct Helper {}
@@ -282,5 +287,10 @@ impl Helper {
         } else {
             return p_else
         }
+    }
+
+    #[func]
+    pub fn xor( a: bool, b: bool ) -> bool {
+        a^b
     }
 }

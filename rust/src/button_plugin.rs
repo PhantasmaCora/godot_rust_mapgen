@@ -206,7 +206,11 @@ impl IEditorPlugin for ButtonsPlugin {
     }
 
     fn exit_tree(&mut self) {
-        self.gen_button.take();
-        self.pla_button.take();
+        let mut gb = self.gen_button.take().unwrap();
+        gb.queue_free();
+        let mut pb = self.pla_button.take().unwrap();
+        pb.queue_free();
+        let mut cb = self.clr_button.take().unwrap();
+        cb.queue_free();
     }
 }

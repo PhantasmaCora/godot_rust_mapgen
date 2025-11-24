@@ -1,12 +1,14 @@
 use std::collections::HashSet;
+use std::cmp::{Ord, Ordering};
 
 use godot::prelude::*;
 use godot::classes::FastNoiseLite;
 
 use ndarray::Array;
 
-use crate::datagrid::{DataGrid, GridElement, ElemType};
+use crate::datagrid::{DataGrid, GridElement, ElemType, Selection, Room};
 use crate::algorithm::{AlgorithmHelper, RectPrism};
+use crate::algorithm::pathcarver::SearchMap;
 
 
 #[derive(GodotConvert, Var, Export, Default)]
@@ -19,7 +21,14 @@ pub enum CommandMode {
     SampleNeighborhood,
     OuterWalls,
     DropFields,
+    SetOps,
     RandomRooms,
+    GetRoomCenters,
+    SortList,
+    ListToSel,
+    SelToList,
+    CarvePaths,
+    ListInput,
 }
 
 #[derive(GodotConvert, Var, Export, Default, PartialEq, Eq, Clone, Copy)]
@@ -31,6 +40,23 @@ pub enum EdgeMode {
     Clamp
 }
 
+#[derive(GodotConvert, Var, Export, Default, PartialEq, Eq, Clone, Copy)]
+#[godot(via = i64)]
+pub enum SortAxis {
+    X,
+    #[default]
+    Y,
+    Z
+}
+
+#[derive(GodotConvert, Var, Export, Default, PartialEq, Eq, Clone, Copy)]
+#[godot(via = i64)]
+pub enum SetBoolean {
+    #[default]
+    Union,
+    Intersection,
+    Difference,
+}
 
 #[derive(GodotClass, Default)]
 #[class(tool, init, base=Resource)]
@@ -66,6 +92,9 @@ pub struct MapGenCommand {
     pub seed_salt: i64,
 
     #[export]
+    pub source: GString,
+
+    #[export]
     pub save: GString,
 
     #[export_group(name = "Initialize mode")]
@@ -85,12 +114,16 @@ pub struct MapGenCommand {
     pub neighborhood: Option<Gd<Neighborhood>>,
     #[export]
     pub edge_mode: EdgeMode,
-    #[export]
-    pub nh_source: GString,
 
     #[export_group(name = "DropFields mode")]
     #[export]
     pub to_drop: godot::prelude::Array<GString>,
+
+    #[export_group(name = "SetOps mode")]
+    #[export]
+    pub second_source: GString,
+    #[export]
+    pub operation: SetBoolean,
 
     #[export_group(name = "RandomRooms mode")]
     #[export]
@@ -107,6 +140,24 @@ pub struct MapGenCommand {
     pub max_within : Vector3i,
     #[export]
     pub save_union : GString,
+
+    #[export_group(name = "SortList mode")]
+    #[export]
+    pub sort_axis: SortAxis,
+    #[export]
+    pub reverse: bool,
+
+    #[export_group(name = "CarvePaths mode")]
+    #[export]
+    pub max_slope: f32,
+    #[export]
+    pub vertical_skew: f64,
+    #[export]
+    pub points_list: GString,
+
+    #[export_group(name = "ListInput mode")]
+    #[export]
+    pub position_list: godot::prelude::Array<Vector3i>,
 }
 
 
@@ -124,31 +175,26 @@ impl MapGenCommand {
     pub fn needs_input(&self) -> NeedsInput {
         match self.mode {
             CommandMode::Initialize => NeedsInput::No,
-            CommandMode::Expressions => NeedsInput::One,
-            CommandMode::SampleNoise => NeedsInput::One,
-            CommandMode::SampleNeighborhood => NeedsInput::One,
-            CommandMode::OuterWalls => NeedsInput::One,
-            CommandMode::DropFields => NeedsInput::One,
-            CommandMode::RandomRooms => NeedsInput::One,
+            _ => NeedsInput::One,
         }
     }
 }
 
 impl MapGenCommand {
 
-    pub fn run_none( &self, seed: i64 ) -> Result<DataGrid, String> {
+    pub fn run_none( &self, _seed: i64, name: String ) -> Result<DataGrid, String> {
         match self.mode {
             CommandMode::Initialize => {
                 if self.init_size.x < 1 || self.init_size.y < 1 || self.init_size.z < 1 {
-                    return Err( format!("Initialize command '{}' was set to invalid size!", self.base().get_name() ) );
+                    return Err( format!("Initialize command '{}' was set to invalid size!", name ) );
                 }
                 return Ok( DataGrid::sized( ( self.init_size.x as usize, self.init_size.y as usize, self.init_size.z as usize ) ) );
             },
-            _ => { return Err( format!("Attempted to run command '{}' by without input, but input was expected!", self.base().get_name() ) ); },
+            _ => { return Err( format!("Attempted to run command '{}' by without input, but input was expected!", name ) ); },
         }
     }
 
-    pub fn run_one( &self, seed: i64, mut input: DataGrid ) -> Result<DataGrid, String> {
+    pub fn run_one( &self, seed: i64, mut input: DataGrid, name: String ) -> Result<DataGrid, String> {
         match self.mode {
             CommandMode::Expressions => {
                 for e in self.expression_list.iter_shared() {
@@ -156,7 +202,7 @@ impl MapGenCommand {
 
                     let res = input.parallel_expr( e.name.to_string(), &e.expr, &e.result_kind );
                     if res.is_err() {
-                        return Err( format!("Error running command '{}': Expression '{}' execution failed with '{:?}'", self.base().get_name(), e.name, res.unwrap_err() ) );
+                        return Err( format!("Error running command '{}': Expression '{}' execution failed with '{:?}'", name, e.name, res.unwrap_err() ) );
                     }
                 }
                 return Ok(input);
@@ -164,7 +210,7 @@ impl MapGenCommand {
             },
             CommandMode::SampleNoise => {
                 if self.noise.is_none() {
-                    return Err( format!("SampleNoise command '{}' had no noise supplied!", self.base().get_name() ) );
+                    return Err( format!("SampleNoise command '{}' had no noise supplied!", name ) );
                 }
                 let mut noise = self.noise.clone().unwrap();
                 noise.set_seed( (seed + self.seed_salt) as i32 );
@@ -175,18 +221,18 @@ impl MapGenCommand {
             },
             CommandMode::SampleNeighborhood => {
                 if self.neighborhood.is_none() {
-                    return Err( format!("SampleNeighborhood command '{}' had no neighborhood supplied!", self.base().get_name() ) );
+                    return Err( format!("SampleNeighborhood command '{}' had no neighborhood supplied!", name ) );
                 }
-                let res = input.sample_neighborhood( self.neighborhood.as_ref().unwrap(), self.edge_mode, &self.nh_source.to_string(), &self.save.to_string() );
+                let res = input.sample_neighborhood( self.neighborhood.as_ref().unwrap(), self.edge_mode, &self.source.to_string(), &self.save.to_string() );
                 if res.is_err() {
-                    return Err( format!("Error running command '{}': Sampling execution failed with '{:?}'", self.base().get_name(), res.unwrap_err() ) );
+                    return Err( format!("Error running command '{}': Sampling execution failed with '{:?}'", name, res.unwrap_err() ) );
                 }
                 return Ok(input);
 
             },
             CommandMode::OuterWalls => {
                 if self.save.is_empty() {
-                    return Err( format!("OuterFaces command '{}' had empty save string supplied!", self.base().get_name() ) );
+                    return Err( format!("OuterFaces command '{}' had empty save string supplied!", name ) );
                 }
                 let mut select = Box::new( HashSet::<(i64, i64, i64)>::new() );
                 for x in 0..input.size.0 {
@@ -213,7 +259,7 @@ impl MapGenCommand {
             },
             CommandMode::DropFields => {
                 for f in self.to_drop.iter_shared() {
-                    input.elements.remove( &f.to_string() );
+                    let _ = input.elements.remove( &f.to_string() );
                 }
                 return Ok(input);
             },
@@ -232,10 +278,124 @@ impl MapGenCommand {
 
                     return Ok(input);
                 } else {
-                    return Err( format!("Error running command '{}': Random rooms failed with '{:?}'", self.base().get_name(), res.err().unwrap() ) );
+                    return Err( format!("Error running command '{}': Random rooms failed with '{:?}'", name, res.err().unwrap() ) );
                 }
             },
-            _ => { return Err( format!("Attempted to run command '{}' by providing one input, incorrectly!", self.base().get_name() ) ); },
+            CommandMode::SortList => {
+                if let Some(GridElement::List(mut vec)) = input.elements.remove( &self.source.to_string() ) {
+                    let slice = &mut vec[..];
+
+                    let sorter: &dyn Fn( &(i64, i64, i64), &(i64, i64, i64) ) -> Ordering;
+
+                    if self.reverse {
+                        match self.sort_axis {
+                            SortAxis::X => { sorter = &| a, b | { a.0.cmp( &b.0 ).reverse() } },
+                            SortAxis::Y => { sorter = &| a, b | { a.1.cmp( &b.1 ).reverse() } },
+                            SortAxis::Z => { sorter = &| a, b | { a.2.cmp( &b.2 ).reverse() } }
+                        }
+                    } else {
+                        match self.sort_axis {
+                            SortAxis::X => { sorter = &| a, b | { a.0.cmp( &b.0 ) } },
+                            SortAxis::Y => { sorter = &| a, b | { a.1.cmp( &b.1 ) } },
+                            SortAxis::Z => { sorter = &| a, b | { a.2.cmp( &b.2 ) } }
+                        }
+                    }
+
+                    slice.sort_by( sorter );
+
+                    input.elements.insert( self.save.to_string(), GridElement::List( vec ) );
+                    return Ok(input);
+                } else {
+                    return Err( format!("Attempted to run SortList command '{}' on a field that wasn't a List field!", name ) );
+                }
+            },
+            CommandMode::CarvePaths => {
+                if let Some(GridElement::Float(arr)) = input.elements.remove( &self.source.to_string() ) {
+                    if let Some(GridElement::List(vec)) = input.elements.remove( &self.points_list.to_string() ) {
+                        let sm = SearchMap{ weight_array: arr, max_slope: self.max_slope.abs(), vertical_skew: (self.vertical_skew as f32).abs() };
+                        let mut uni = Box::new( HashSet::<(i64, i64, i64)>::new() );
+
+                        for ridx in 0..(vec.len() - 1) {
+                            let ca = vec[ridx];
+                            let cb = vec[ridx + 1];
+                            let result = sm.thstar( ca, cb );
+                            if let Ok( path ) = result {
+                                uni = Box::new( &*uni | &*path );
+                            }
+                        }
+
+                        input.elements.insert( self.save.to_string(), GridElement::Sel(uni) );
+                        return Ok(input);
+                    } else {
+                        return Err( format!("Attempted to run CarvePaths command '{}' without providing a set of rooms to connect!", name ) );
+                    }
+                } else {
+                    return Err( format!("Attempted to run CarvePaths command '{}' without providing a (float) weights field!", name ) );
+                }
+            },
+            CommandMode::SetOps => {
+                if let Some(GridElement::Sel(a)) = input.elements.get( &self.source.to_string() ) {
+                    if let Some(GridElement::Sel(b)) = input.elements.get( &self.second_source.to_string() ) {
+                        let newset : Selection;
+                        match self.operation {
+                            SetBoolean::Union => {
+                                newset = Box::new( &**a | &**b );
+                            },
+                            SetBoolean::Intersection => {
+                                newset = Box::new( &**a & &**b );
+                            },
+                            SetBoolean::Difference => {
+                                newset = Box::new( &**a - &**b );
+                            },
+                        }
+                        input.elements.insert( self.save.to_string(), GridElement::Sel(newset) );
+                        return Ok(input);
+                    } else {
+                        return Err( format!("Attempted to run SetOps command '{}' with a non-boolean second source!", name ) );
+                    }
+                } else {
+                    return Err( format!("Attempted to run SetOps command '{}' with a non-boolean source!", name ) );
+                }
+            },
+            CommandMode::GetRoomCenters => {
+                if let Some(GridElement::Rooms(vec)) = input.elements.get( &self.source.to_string() ) {
+                    let list = Vec::from_iter( vec.into_iter().map( |r| r.center ) );
+                    input.elements.insert( self.save.to_string(), GridElement::List(list) );
+                    return Ok(input);
+                } else {
+                    return Err( format!("Attempted to run GetRoomCenters command '{}' with a non-rooms source!", name ) );
+                }
+            },
+            CommandMode::ListInput => {
+                let mut ls = Vec::<(i64, i64, i64)>::new();
+                for ivect in self.position_list.iter_shared() {
+                    ls.push( ( ivect.x as i64, ivect.y as i64, ivect.z as i64 ) );
+                }
+                input.elements.insert( self.save.to_string(), GridElement::List(ls) );
+                return Ok(input);
+            },
+            CommandMode::ListToSel => {
+                if let Some(GridElement::List(vec)) = input.elements.remove( &self.source.to_string() ) {
+                    let mut sel = Box::new( HashSet::<(i64, i64, i64)>::new() );
+                    for pos in vec {
+                        sel.insert(pos);
+                    }
+                    input.elements.insert( self.save.to_string(), GridElement::Sel(sel) );
+                    return Ok(input);
+                } else {
+                    return Err( format!("Attempted to run ListToSel command '{}' with a non-list source!", name ) );
+                }
+            },
+            CommandMode::SelToList => {
+                if let Some(GridElement::Sel(sel)) = input.elements.remove( &self.source.to_string() ) {
+                    let list = Vec::from_iter( sel.iter().map( |af| af.clone() ) );
+                    input.elements.insert( self.save.to_string(), GridElement::List(list) );
+                    return Ok(input);
+                } else {
+                    return Err( format!("Attempted to run SelToList command '{}' with a non-boolean source!", name ) );
+                }
+            },
+            _ => { return Err( format!("Attempted to run command '{}' by providing one input, incorrectly!", name ) ); },
         }
     }
 
