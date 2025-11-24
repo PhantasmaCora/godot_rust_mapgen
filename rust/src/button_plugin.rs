@@ -1,5 +1,5 @@
 use godot::prelude::*;
-use godot::classes::{EditorPlugin, IEditorPlugin, EditorSelection, Control, Button, editor_plugin::CustomControlContainer};
+use godot::classes::{EditorPlugin, IEditorPlugin, EditorSelection, Button, editor_plugin::CustomControlContainer};
 
 use crate::nodes::GeneratedGridMap;
 
@@ -26,7 +26,7 @@ impl ButtonsPlugin {
             if interface == None {
                 return;
             }
-            let mut interface = interface.unwrap();
+            let interface = interface.unwrap();
 
             let oselection = interface.get_selection();
             if oselection == None {
@@ -62,7 +62,7 @@ impl ButtonsPlugin {
             if interface == None {
                 return;
             }
-            let mut interface = interface.unwrap();
+            let interface = interface.unwrap();
 
             let oselection = interface.get_selection();
             if oselection == None {
@@ -91,7 +91,7 @@ impl ButtonsPlugin {
             if interface == None {
                 return;
             }
-            let mut interface = interface.unwrap();
+            let interface = interface.unwrap();
 
             let oselection = interface.get_selection();
             if oselection == None {
@@ -120,7 +120,7 @@ impl ButtonsPlugin {
             if interface == None {
                 return;
             }
-            let mut interface = interface.unwrap();
+            let interface = interface.unwrap();
 
             let oselection = interface.get_selection();
             if oselection == None {
@@ -186,14 +186,14 @@ impl IEditorPlugin for ButtonsPlugin {
         self.clr_button = Some(clr_button);
 
 
-        let mut selection : Gd<EditorSelection>;
+        let selection : Gd<EditorSelection>;
 
         {
             let interface = self.base_mut().get_editor_interface();
             if interface == None {
                 return;
             }
-            let mut interface = interface.unwrap();
+            let interface = interface.unwrap();
 
             let oselection = interface.get_selection();
             if oselection == None {

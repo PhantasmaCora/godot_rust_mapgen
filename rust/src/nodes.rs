@@ -36,14 +36,14 @@ impl GeneratedGridMap {
             godot_error!("GeneratedGridMap node must have a MapGenNode as its first child!");
             return;
         }
-        let mut ch = ch.unwrap();
+        let ch = ch.unwrap();
 
         let as_mgn = ch.try_cast::<MapGenNode>();
         if as_mgn.is_err() {
             godot_error!("GeneratedGridMap node must have a MapGenNode as its first child!");
             return;
         }
-        let mut as_mgn = as_mgn.unwrap();
+        let as_mgn = as_mgn.unwrap();
 
         let gen_result = as_mgn.bind().generate( seed );
 
@@ -150,13 +150,13 @@ impl MapGenNode {
             if ch.is_none() {
                 return Err( "MapGenNode configured to need a child MapGenNode found none!".to_string() );
             }
-            let mut ch = ch.unwrap();
+            let ch = ch.unwrap();
 
             let as_mgn = ch.try_cast::<MapGenNode>();
             if as_mgn.is_err() {
                 return Err( "MapGenNode configured to need a child MapGenNode found none!".to_string() );
             }
-            let mut as_mgn = as_mgn.unwrap();
+            let as_mgn = as_mgn.unwrap();
 
             let gen_result = as_mgn.bind().generate( seed );
 

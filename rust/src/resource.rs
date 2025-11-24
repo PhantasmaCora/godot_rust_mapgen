@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use godot::prelude::*;
 use godot::classes::FastNoiseLite;
 
-use ndarray::{Array, Array3};
+use ndarray::Array;
 
-use crate::datagrid::{DataGrid, GridElement, ElemType, Selection};
+use crate::datagrid::{DataGrid, GridElement, ElemType};
 use crate::algorithm::{AlgorithmHelper, RectPrism};
 
 

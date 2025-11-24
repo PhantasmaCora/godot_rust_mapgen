@@ -4,7 +4,7 @@ use godot::prelude::*;
 use godot::classes::Expression;
 use godot::builtin::array;
 
-use ndarray::{Array3, Zip};
+use ndarray::Array3;
 
 use crate::resource::{Neighborhood, EdgeMode};
 

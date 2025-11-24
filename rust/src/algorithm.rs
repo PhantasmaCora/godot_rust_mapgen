@@ -5,7 +5,7 @@ use rand_chacha::ChaCha12Rng;
 
 //use ndarray::{Array, Array3};
 
-use crate::datagrid::{DataGrid, GridElement, ElemType, Selection, Room};
+use crate::datagrid::{Selection, Room};
 
 
 
@@ -23,7 +23,7 @@ impl AlgorithmHelper {
         let mut uni = Box::new( HashSet::<(i64, i64, i64)>::new() );
         let mut random = ChaCha12Rng::seed_from_u64( seed as u64 );
 
-        let mut safety = count * 2;
+        let safety = count * 2;
 
         while safety > 0 && rms.len() < count as usize {
             let sx = random.random_range( sized.min.0..=sized.max.0 );
