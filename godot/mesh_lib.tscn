@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://d4dc43btuf8dq"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_u6g0g"]
+frequency = 0.02
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_dxx8f"]
+width = 256
+noise = SubResource("FastNoiseLite_u6g0g")
+as_normal_map = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_axt2h"]
+albedo_color = Color(0.383496, 0.13217258, 0.18155453, 1)
+roughness = 0.9
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_dxx8f")
+
+[sub_resource type="BoxMesh" id="BoxMesh_rpfwh"]
+material = SubResource("StandardMaterial3D_axt2h")
+
+[node name="Node3D" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_rpfwh")
