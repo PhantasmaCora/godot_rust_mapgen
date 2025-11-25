@@ -36,10 +36,10 @@ jobs:
       run: cargo build --verbose --profile release
       working-directory: ./rust
     - uses: actions/upload-artifact@v4
-    - uses: actions/upload-artifact@v4
       with:
-        name: windows build
         path: ./rust/target/release/godot_mapgen.dll
+        name: windows_build
+        
 
 
   build_macos:
@@ -55,5 +55,5 @@ jobs:
       working-directory: ./rust
     - uses: actions/upload-artifact@v4
       with:
-        name: macos build
+        name: macos_build
         path: ./rust/target/release/libgodot_mapgen.dylib
