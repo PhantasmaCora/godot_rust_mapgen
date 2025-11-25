@@ -266,19 +266,19 @@ impl MapGenCommand {
                 for x in 0..input.size.0 {
                     for y in 0..input.size.1 {
                         select.insert( (x as i64, y as i64, 0) );
-                        select.insert( (x as i64, y as i64, input.size.2 as i64) );
+                        select.insert( (x as i64, y as i64, input.size.2 as i64 - 1) );
                     }
 
                     for z in 0..input.size.2 {
                         select.insert( (x as i64, 0, z as i64) );
-                        select.insert( (x as i64, input.size.1 as i64, z as i64) );
+                        select.insert( (x as i64, input.size.1 as i64 - 1, z as i64) );
                     }
                 }
 
                 for y in 0..input.size.1 {
                     for z in 0..input.size.2 {
                         select.insert( (0, y as i64, z as i64) );
-                        select.insert( (input.size.0 as i64, y as i64, z as i64) );
+                        select.insert( (input.size.0 as i64 - 1, y as i64, z as i64) );
                     }
                 }
 
