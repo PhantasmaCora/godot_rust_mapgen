@@ -1,0 +1,59 @@
+name: Rust
+
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_linux:
+    name: Build Linux version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
+    - uses: actions/upload-artifact@v4
+      with:
+        name: linux build
+        path: ./rust/target/release/libgodot_mapgen.so
+
+    
+
+  build_windows:
+    name: Build Windows version
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
+    - uses: actions/upload-artifact@v4
+      with:
+        path: ./rust/target/release/godot_mapgen.dll
+        name: windows_build
+        
+
+
+  build_macos:
+    name: Build macos version
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
+    - uses: actions/upload-artifact@v4
+      with:
+        name: macos_build
+        path: ./rust/target/release/libgodot_mapgen.dylib
