@@ -9,6 +9,7 @@ use ndarray::Array;
 use crate::datagrid::{DataGrid, GridElement, ElemType, Selection, Room};
 use crate::algorithm::{AlgorithmHelper, RectPrism};
 use crate::algorithm::pathcarver::SearchMap;
+use crate::algorithm::cellular_automata::CellAutoRule;
 
 
 #[derive(GodotConvert, Var, Export, Default)]
@@ -29,6 +30,9 @@ pub enum CommandMode {
     SelToList,
     CarvePaths,
     ListInput,
+    CellularAutomata,
+    IntervalSelect,
+    SelectFall,
 }
 
 #[derive(GodotConvert, Var, Export, Default, PartialEq, Eq, Clone, Copy)]
@@ -158,6 +162,30 @@ pub struct MapGenCommand {
     #[export_group(name = "ListInput mode")]
     #[export]
     pub position_list: godot::prelude::Array<Vector3i>,
+
+    #[export_group(name = "CellularAutomata mode")]
+    #[export]
+    pub ca_rule: Option<Gd<CellAutoRule>>,
+    #[export]
+    pub steps: i64,
+    #[export]
+    pub apply_min: Vector3i,
+    #[export]
+    pub apply_max: Vector3i,
+
+    #[export_group(name = "IntervalSelect mode")]
+    #[export]
+    pub interval: Vector3i,
+    #[export]
+    pub offset: Vector3i,
+
+    #[export_group(name = "SelectFall mode")]
+    #[export]
+    pub solid: GString,
+    #[export]
+    pub sf_reverse: bool,
+    #[export]
+    pub column: bool,
 }
 
 
@@ -395,11 +423,75 @@ impl MapGenCommand {
                     return Err( format!("Attempted to run SelToList command '{}' with a non-boolean source!", name ) );
                 }
             },
+            CommandMode::CellularAutomata => {
+                if let Some(rule) = &self.ca_rule {
+                    let data = input.elements.remove( &self.source.to_string() );
+                    if let Some(ge) = data {
+                        let res = rule.bind().run( ge, RectPrism{ min:(self.apply_min.x as usize, self.apply_min.y as usize, self.apply_min.z as usize), max: (self.apply_max.x as usize, self.apply_max.y as usize, self.apply_max.z as usize) }, self.steps as usize );
+                        if res.is_err() {
+                            return Err( format!("CellularAutomata command '{}' errored out with '{}'", name, res.err().unwrap() ) );
+                        } else {
+                            input.elements.insert( self.save.to_string(), res.unwrap() );
+                            return Ok(input);
+                        }
+                    } else {
+                        return Err( format!("Attempted to run CellularAutomata command '{}' on missing input!", name ) );
+                    }
+                } else {
+                    return Err( format!("Attempted to run CellularAutomata command '{}' without a rule set!", name ) );
+                }
+            },
+            CommandMode::IntervalSelect => {
+                let mut select = Box::new( HashSet::<(i64, i64, i64)>::new() );
+                let sz = input.size;
+                for x in ((self.offset.x as usize)..sz.0).step_by( self.interval.z as usize ) {
+                    for y in ((self.offset.y as usize)..sz.1).step_by( self.interval.z as usize ) {
+                        for z in ((self.offset.z as usize)..sz.2).step_by( self.interval.z as usize ) {
+                            select.insert( (x as i64, y as i64, z as i64) );
+                        }
+                    }
+                }
+                input.elements.insert( self.save.to_string(), GridElement::Sel(select) );
+                return Ok(input);
+            },
+            CommandMode::SelectFall => {
+                if let Some(GridElement::Sel(sel)) = input.elements.get( &self.source.to_string() ) {
+                    if let Some(GridElement::Sel(wall)) = input.elements.get( &self.solid.to_string() ) {
+                        let mut output = Box::new( HashSet::<(i64, i64, i64)>::new() );
+                        for pos in sel.clone().into_iter() {
+                            let mut prev = pos;
+                            let mut fore = pos;
+                            if self.sf_reverse {
+                                fore = ( fore.0, fore.1 + 1, fore.2 );
+                            } else {
+                                fore = ( fore.0, fore.1 - 1, fore.2 );
+                            }
+                            while !wall.contains(&fore) {
+                                if self.column {
+                                    output.insert(prev);
+                                }
+                                prev = fore;
+                                if self.sf_reverse {
+                                    fore = ( fore.0, fore.1 + 1, fore.2 );
+                                } else {
+                                    fore = ( fore.0, fore.1 - 1, fore.2 );
+                                }
+                            }
+                            output.insert(prev);
+                        }
+                        input.elements.insert( self.save.to_string(), GridElement::Sel(output) );
+                        return Ok(input);
+                    } else {
+                        return Err( format!("Attempted to run SelectFall command '{}' with a non-boolean solid wall field!", name ) );
+                    }
+                } else {
+                    return Err( format!("Attempted to run SelectFall command '{}' with a non-boolean source!", name ) );
+                }
+            },
             _ => { return Err( format!("Attempted to run command '{}' by providing one input, incorrectly!", name ) ); },
         }
     }
 
 
 }
-
 

@@ -276,7 +276,7 @@ impl DataGrid {
 
 #[derive(GodotClass)]
 #[class(tool, init, base=Object)]
-struct Helper {}
+pub struct Helper {}
 
 #[godot_api]
 impl Helper {

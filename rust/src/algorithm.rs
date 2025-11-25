@@ -8,9 +8,9 @@ use rand_chacha::ChaCha12Rng;
 use crate::datagrid::{Selection, Room};
 
 pub mod pathcarver;
+pub mod cellular_automata;
 
-
-
+#[derive(Clone)]
 pub struct RectPrism {
     pub min: (usize, usize, usize),
     pub max: (usize, usize, usize)

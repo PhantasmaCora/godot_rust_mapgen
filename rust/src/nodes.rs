@@ -117,8 +117,67 @@ impl GeneratedGridMap {
         }
 
         self.result_grid = Some(rg);
-
     }
+
+    #[func]
+    pub fn sample_grid(&self, name: GString, position: Vector3i ) -> Variant {
+        if let Some(ref rg) = self.result_grid {
+            if let Some(ref ge) = rg.elements.get(&name.to_string()) {
+                match ge {
+                    GridElement::Int(arr) => { return arr[[ position.x as usize, position.y as usize, position.z as usize ]].to_variant() },
+                    GridElement::Float(arr) => { return arr[[ position.x as usize, position.y as usize, position.z as usize ]].to_variant() },
+                    GridElement::Sel(select) => { return select.contains( &(position.x as i64, position.y as i64, position.z as i64) ).to_variant() },
+                    GridElement::Rooms(vec) => {
+                        for (idx, rm) in vec.into_iter().enumerate() {
+                            if rm.members.contains( &(position.x as i64, position.y as i64, position.z as i64) ) {
+                                return (idx as i64).to_variant();
+                            }
+                        }
+                        return (-1).to_variant();
+                    },
+                    GridElement::List(vec) => {
+                        for (idx, pos) in vec.into_iter().enumerate() {
+                            if (position.x as i64, position.y as i64, position.z as i64) == *pos {
+                                return (idx as i64).to_variant();
+                            }
+                        }
+                        return (-1).to_variant();
+                    },
+                }
+            } else {
+                godot_error!("Attempt to sample GeneratedGridMap failed due to nonexistent field name.");
+            }
+        } else {
+            godot_error!("Attempt to sample GeneratedGridMap failed due to lack of successfully generated data grid.");
+        }
+        return 0.to_variant();
+    }
+
+    #[func]
+    pub fn get_fields(&self) -> Array<GString> {
+        if let Some(ref rg) = self.result_grid {
+            return Array::from( rg.elements.keys().map( |st| GString::from(st) ).collect::<Vec<_>>().as_slice() );
+        } else {
+            godot_error!("Attempt to get list on GeneratedGridMap failed due to lack of successfully generated data grid.");
+            return Array::new();
+        }
+    }
+
+    #[func]
+    pub fn get_list(&self, name: GString) -> Array<Vector3i> {
+        if let Some(ref rg) = self.result_grid {
+            if let Some(GridElement::List( ls )) = rg.elements.get(&name.to_string()) {
+                return Array::from( ls.into_iter().map( | tup | Vector3i::new( tup.0 as i32, tup.1 as i32, tup.2 as i32 ) ).collect::<Vec<_>>().as_slice() );
+            } else {
+                godot_error!("Attempt to get list on GeneratedGridMap failed due to missing or incorrect-typed list.");
+                return Array::new();
+            }
+        } else {
+            godot_error!("Attempt to get list on GeneratedGridMap failed due to lack of successfully generated data grid.");
+            return Array::new();
+        }
+    }
+
 }
 
 

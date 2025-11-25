@@ -1,4 +1,4 @@
-[gd_resource type="MeshLibrary" load_steps=7 format=3 uid="uid://dr4td01d3qbxc"]
+[gd_resource type="MeshLibrary" load_steps=8 format=3 uid="uid://dr4td01d3qbxc"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_u6g0g"]
 frequency = 0.02
@@ -29,12 +29,15 @@ data = {
 [sub_resource type="ImageTexture" id="ImageTexture_t3rjg"]
 image = SubResource("Image_26cfm")
 
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_u6g0g"]
+data = PackedVector3Array(-0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, -0.5)
+
 [resource]
 item/0/name = "MeshInstance3D"
 item/0/mesh = SubResource("BoxMesh_26cfm")
 item/0/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 item/0/mesh_cast_shadow = 1
-item/0/shapes = []
+item/0/shapes = [SubResource("ConcavePolygonShape3D_u6g0g"), Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)]
 item/0/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 item/0/navigation_layers = 1
 item/0/preview = SubResource("ImageTexture_t3rjg")
