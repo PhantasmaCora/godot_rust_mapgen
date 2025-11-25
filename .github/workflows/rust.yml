@@ -1,35 +1,43 @@
 name: Rust
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+on: workflow_dispatch
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build_linux:
+    name: Build Linux version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
 
   build_windows:
+    name: Build Windows version
     runs-on: windows-latest
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
 
   build_macos:
+    name: Build macos version
     runs-on: macos-latest
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --profile release
+      working-directory: ./rust
