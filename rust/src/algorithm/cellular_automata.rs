@@ -1,13 +1,13 @@
 
 
-use ndarray::{Array, Array3};
+use ndarray::Array3;
 
 use godot::prelude::*;
 use godot::classes::Expression;
 use godot::builtin::array;
 
-use crate::datagrid::{DataGrid, GridElement, Selection, Room, Helper};
-use crate::resource::{Neighborhood, EdgeMode};
+use crate::datagrid::{GridElement, Helper};
+use crate::resource::Neighborhood;
 use crate::algorithm::RectPrism;
 
 

@@ -6,7 +6,7 @@ use godot::classes::FastNoiseLite;
 
 use ndarray::Array;
 
-use crate::datagrid::{DataGrid, GridElement, ElemType, Selection, Room};
+use crate::datagrid::{DataGrid, GridElement, ElemType, Selection};
 use crate::algorithm::{AlgorithmHelper, RectPrism};
 use crate::algorithm::pathcarver::SearchMap;
 use crate::algorithm::cellular_automata::CellAutoRule;

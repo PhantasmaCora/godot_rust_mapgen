@@ -1,13 +1,12 @@
 use std::collections::{HashSet, HashMap};
 
-use ndarray::{Array3, Axis};
+use ndarray::Array3;
 
 use ultraviolet::vec::Vec3;
 
 use grid_ray::GridRayIter3;
-use grid_ray::ilattice::glam::{IVec3, Vec3A};
+use grid_ray::ilattice::glam::Vec3A;
 
-use godot::global::godot_print;
 
 use crate::datagrid::Selection;
 
@@ -55,7 +54,7 @@ impl SearchMap {
         while !open.is_empty() {
             let key : [usize; 3];
             {
-                key = *open.iter().min_by_key( | (k, v) | v.score() ).unwrap().0;
+                key = *open.iter().min_by_key( | (_k, v) | v.score() ).unwrap().0;
             }
             let best = open.remove_entry( &key );
 
@@ -127,7 +126,7 @@ impl SearchMap {
     pub fn search_cost( &self, start: [usize; 3], along: Vec3 ) -> f32 {
         let mut cost = 0.0;
         let mut traversal = GridRayIter3::new( Vec3A::from_array([ start[0] as f32, start[1] as f32, start[2] as f32 ]), Vec3A::from_array([along.x, along.y, along.z]) );
-        let mut mag = along.mag();
+        let mag = along.mag();
         let mut et = 0.0;
         while et < mag {
             let next = traversal.next().unwrap();
@@ -142,9 +141,8 @@ impl SearchMap {
     }
 
     pub fn search_select( &self, start: [usize; 3], along: Vec3, mut sel: Selection ) -> Selection {
-        let mut cost = 0.0;
         let mut traversal = GridRayIter3::new( Vec3A::from_array([ start[0] as f32, start[1] as f32, start[2] as f32 ]), Vec3A::from_array([along.x, along.y, along.z]) );
-        let mut mag = along.mag();
+        let mag = along.mag();
         let mut et = 0.0;
         while et < mag {
             let next = traversal.next().unwrap();

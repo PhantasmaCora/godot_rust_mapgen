@@ -72,15 +72,15 @@ impl DataGrid {
             for y in 0..self.size.1 {
                 for z in 0 .. self.size.2 {
                     let mut dict = Dictionary::new();
-                    dict.insert( "position", Vector3i::new( x as i32, y as i32, z as i32 ) );
+                    let _ = dict.insert( "position", Vector3i::new( x as i32, y as i32, z as i32 ) );
 
                     for (k, v) in &self.elements {
                         if let GridElement::Int( arr ) = v {
-                            dict.insert( GString::from(k), arr[[x, y, z]] );
+                            let _ = dict.insert( GString::from(k), arr[[x, y, z]] );
                         } else if let GridElement::Float( arr ) = v {
-                            dict.insert( GString::from(k), arr[[x, y, z]] );
+                            let _ = dict.insert( GString::from(k), arr[[x, y, z]] );
                         } else if let GridElement::Sel( select ) = v {
-                            dict.insert( GString::from(k), select.contains( &( x as i64, y as i64, z as i64 )) );
+                            let _ = dict.insert( GString::from(k), select.contains( &( x as i64, y as i64, z as i64 )) );
                         }
                     }
 
