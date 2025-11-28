@@ -21,9 +21,9 @@ struct Node {
 }
 
 impl Node {
-    fn score(&self) -> i64 {
-        let fscore = self.cost + self.end_dist * 1.2;
-        (fscore * 8192.0) as i64
+    fn score(&self, shift: f32) -> i64 {
+        let fscore = self.cost + self.end_dist * (5.0 + shift);
+        (fscore * 10.0) as i64
     }
 
 }
@@ -47,16 +47,20 @@ impl SearchMap {
 
         let offset_list = [
             (0,0,1), (0,0,-1), (1,0,0), (-1,0,0),
-            (0,1,1), (0,1,-1), (1,1,0), (-1,1,0),
-            (0,-1,1), (0,-1,-1), (1,-1,0), (-1,-1,0)
+            (0,1,2), (0,1,-2), (2,1,0), (-2,1,0),
+            (0,-1,2), (0,-1,-2), (2,-1,0), (-2,-1,0)
         ];
+
+        let mut steps: f32 = 0.0;
 
         while !open.is_empty() {
             let key : [usize; 3];
             {
-                key = *open.iter().min_by_key( | (_k, v) | v.score() ).unwrap().0;
+                key = *open.iter().min_by_key( | (_k, v) | v.score( 0.1 * steps.powi(3) / steps.powi(2) ) ).unwrap().0;
             }
             let best = open.remove_entry( &key );
+
+            steps += 1.0;
 
             let Some((bp, bn)) = best else { return Err(()) };
 
@@ -65,6 +69,7 @@ impl SearchMap {
                 let mut current = bp;
                 let mut node = &bn;
                 while current != start {
+                    sel.insert( (current[0] as i64, current[1] as i64, current[2] as i64) );
                     if closed.contains_key(&current) {
                         node = closed.get(&current).unwrap();
                     }
@@ -88,14 +93,14 @@ impl SearchMap {
 
                 let dx = ( nvec.x.powi(2) + nvec.z.powi(2) ).sqrt();
                 let dotprod = nvec.normalized().dot( bn.pvec.normalized() );
-                if nvec.y.abs() / dx.abs() > self.max_slope || dotprod > -0.05 {continue;}
+                if nvec.y.abs() / dx.abs() > self.max_slope || dotprod < 0.05 {continue;}
 
                 if !open.contains_key(&neighbor) {
-                    open.insert( neighbor.clone(), Node{ cost: 1000000.0, end_dist: self.distance(&end, &neighbor), parent: bp, pvec: nvec } );
+                    open.insert( neighbor.clone(), Node{ cost: 1000000000.0, end_dist: self.distance(&end, &neighbor), parent: bp, pvec: nvec } );
                 }
 
                 let mr = open.get_mut(&neighbor).unwrap();
-                if dotprod < -0.75 {
+                if dotprod > 0.9 {
                     let p = bn.parent;
                     let new_cost = closed.get(&p).unwrap().cost + self.search_cost( p, nvec );
                     if new_cost < mr.cost {
@@ -126,28 +131,30 @@ impl SearchMap {
     pub fn search_cost( &self, start: [usize; 3], along: Vec3 ) -> f32 {
         let mut cost = 0.0;
         let mut traversal = GridRayIter3::new( Vec3A::from_array([ start[0] as f32, start[1] as f32, start[2] as f32 ]), Vec3A::from_array([along.x, along.y, along.z]) );
-        let mag = along.mag();
-        let mut et = 0.0;
-        while et < mag {
+        let mut cont = true;
+        while cont {
             let next = traversal.next().unwrap();
-            if et > 0.0 {
+            if next.0 > 1.0 {
+                cont = false;
+            } else {
                 let ch = self.check( [next.1.x as i64, next.1.y as i64, next.1.z as i64] );
                 if ch.is_none() { break; }
                 cost += self.weight_array[ ch.unwrap() ];
             }
-            et = next.0;
         }
         cost as f32
     }
 
     pub fn search_select( &self, start: [usize; 3], along: Vec3, mut sel: Selection ) -> Selection {
         let mut traversal = GridRayIter3::new( Vec3A::from_array([ start[0] as f32, start[1] as f32, start[2] as f32 ]), Vec3A::from_array([along.x, along.y, along.z]) );
-        let mag = along.mag();
-        let mut et = 0.0;
-        while et < mag {
+        let mut cont = true;
+        while cont {
             let next = traversal.next().unwrap();
-            sel.insert( (next.1.x as i64, next.1.y as i64, next.1.z as i64) );
-            et = next.0;
+            if next.0 > 1.0 {
+                cont = false;
+            } else {
+                sel.insert( (next.1.x as i64, next.1.y as i64, next.1.z as i64) );
+            }
         }
         sel
     }
@@ -155,11 +162,11 @@ impl SearchMap {
     pub fn check( &self, a: [i64; 3] ) -> Option<[usize; 3]> {
         let dim = self.weight_array.dim();
         let dim = ( dim.0 as i64, dim.1 as i64, dim.2 as i64 );
-        if a[0] < 0 || a[0] >= dim.0 {
+        if a[0] < 3 || a[0] >= dim.0 - 3 {
             return None;
-        } else if a[1] < 0 || a[1] >= dim.1 {
+        } else if a[1] < 3 || a[1] >= dim.1 - 3 {
             return None;
-        } else if a[2] < 0 || a[2] >= dim.2 {
+        } else if a[2] < 3 || a[2] >= dim.2 - 3 {
             return None;
         }
         Some([ a[0] as usize, a[1] as usize, a[2] as usize ])
